@@ -1,3 +1,5 @@
+"use client";
+
 import { GlassCard } from "@/components/ui/glass-card";
 import { SectionTitle } from "@/components/ui/section-title";
 import { Button } from "@/components/ui/button";

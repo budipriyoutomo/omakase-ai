@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"lib/query/fetchers/dashboard-overview.ts -> @/lib/data/mock\":{\"id\":\"lib/query/fetchers/dashboard-overview.ts -> @/lib/data/mock\",\"files\":[]}}"
+self.__REACT_LOADABLE_MANIFEST='{"lib/query/fetchers/dashboard-overview.ts -> @/lib/data/mock":{"id":10905,"files":[]}}';

@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";

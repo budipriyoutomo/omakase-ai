@@ -72,6 +72,10 @@ export async function apiRequest<T = unknown>(path: string, options: ApiRequestO
     throw new ApiError(message, response.status, parsed);
   }
 
+  if (parsed && typeof parsed === "object" && "data" in parsed) {
+    return (parsed as { data: T }).data;
+  }
+
   return parsed as T;
 }
 

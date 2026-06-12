@@ -28,7 +28,7 @@ export function DashboardOverview() {
     );
   }
 
-  const { stats, trendingTemplates, recentPreviewUrls, suggestion } = data;
+  const { stats, trendingTemplates, recentPreviewUrls, suggestion, monthlyUsage } = data;
 
   return (
     <div className="space-y-6">
@@ -43,7 +43,7 @@ export function DashboardOverview() {
       </div>
       <GlassCard>
         <h3 className="text-lg font-semibold">Monthly Usage</h3>
-        <UsageChart />
+        <UsageChart data={monthlyUsage} />
       </GlassCard>
       <div className="grid gap-4 lg:grid-cols-2">
         <GlassCard>

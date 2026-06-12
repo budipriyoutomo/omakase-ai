@@ -1,13 +1,15 @@
 "use client";
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { monthlyUsage } from "@/lib/data/mock";
+import type { MonthlyUsagePoint } from "@/lib/api/types";
 
-export function UsageChart() {
+export function UsageChart({ data }: { data?: MonthlyUsagePoint[] }) {
+  const chartData = data && data.length > 0 ? data : [];
+
   return (
     <div className="h-56 w-full min-w-0 sm:h-72">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={monthlyUsage} margin={{ left: -8, right: 8 }}>
+        <AreaChart data={chartData} margin={{ left: -8, right: 8 }}>
           <defs>
             <linearGradient id="usageGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.8} />

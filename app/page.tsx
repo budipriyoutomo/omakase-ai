@@ -3,10 +3,25 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { templates, previews } from "@/lib/data/mock";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { SectionTitle } from "@/components/ui/section-title";
+
+const MARKETING_PREVIEWS = [
+  "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?auto=format&fit=crop&w=1000&q=80",
+  "https://images.unsplash.com/photo-1553621042-f6e147245754?auto=format&fit=crop&w=1000&q=80",
+  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1000&q=80",
+  "https://images.unsplash.com/photo-1611143669185-af224c5e3252?auto=format&fit=crop&w=1000&q=80"
+];
+
+const MARKETING_TEMPLATES = [
+  { name: "Sushi Night Promo", category: "Sushi", style: "Tokyo Neon" },
+  { name: "Ramen Lunch Combo", category: "Ramen", style: "Dark Japanese Luxury" },
+  { name: "Izakaya Happy Hour", category: "Izakaya", style: "Modern Izakaya" },
+  { name: "Cafe Matcha Set", category: "Dessert Cafe", style: "Minimal Zen" },
+  { name: "AYCE Weekend Feast", category: "AYCE", style: "Anime Pop" },
+  { name: "Coffee Morning Deal", category: "Coffee Shop", style: "Minimal Zen" }
+];
 
 export default function LandingPage() {
   return (
@@ -22,7 +37,10 @@ export default function LandingPage() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
             <Button variant="default" size="xl" className="w-full sm:w-auto" asChild>
-              <Link href="/dashboard">Start Generating</Link>
+              <Link href="/login">Login</Link>
+            </Button>
+            <Button variant="default" size="xl" className="w-full sm:w-auto" asChild>
+              <Link href="/register">Register</Link>
             </Button>
             <Button variant="outline" size="xl" className="w-full border-border sm:w-auto" asChild>
               <Link href="/dashboard/templates">View Templates</Link>
@@ -30,7 +48,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:gap-3 md:min-w-0">
-          {previews.slice(0, 4).map((src, i) => (
+          {MARKETING_PREVIEWS.slice(0, 4).map((src, i) => (
             <motion.div
               key={src}
               animate={{ y: [0, -8, 0] }}
@@ -67,7 +85,7 @@ export default function LandingPage() {
       <section className="mt-14 sm:mt-20">
         <SectionTitle title="Marketing Templates" />
         <div className="grid gap-4 md:grid-cols-3">
-          {templates.map((template) => (
+          {MARKETING_TEMPLATES.map((template) => (
             <GlassCard key={template.name}>
               <p className="text-sm text-gold">{template.category}</p>
               <h3 className="mt-2 text-lg">{template.name}</h3>

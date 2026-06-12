@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Brain,
   ImageIcon,
@@ -25,6 +25,8 @@ import {
 
 import { FileDropzone } from "@/components/ui/file-dropzone";
 import { GlassCard } from "../ui/glass-card";
+import { createGenerationWithAssets, getGeneration } from "@/lib/services/campaigns.service";
+import type { GenerationRecord } from "@/lib/api/types";
 
 /* =========================================================
    DATA
@@ -234,8 +236,21 @@ premium dessert photography
    COMPONENT
 ========================================================= */
 
-export function GeneratorForm() {
+type GeneratorFormProps = {
+  onGenerationStart?: () => void;
+  onGenerationChange?: (generation: GenerationRecord) => void;
+  onGenerationError?: (message: string) => void;
+};
+
+const POLLABLE_STATUSES = new Set(["pending", "processing", "generated_image"]);
+
+export function GeneratorForm({
+  onGenerationStart,
+  onGenerationChange,
+  onGenerationError,
+}: GeneratorFormProps = {}) {
   const [referenceImages, setReferenceImages] = useState<File[]>([]);
+  const isMountedRef = useRef(true);
 
   const [campaignType, setCampaignType] = useState(campaignTypes[0]);
   const [cuisine, setCuisine] = useState(cuisineTypes[0]);
@@ -372,56 +387,73 @@ ${prompt}
      GENERATE
   ========================================================= */
 
-  const handleGenerate = async () => {
-    const payload = {
-      campaign: {
-        type: campaignType,
-        cuisine,
-        style,
-        platform,
-        audience,
-        mood,
-        goal,
-      },
+  const [isGenerating, setIsGenerating] = useState(false);
 
-      marketing: {
-        visual_strategy: visualStrategy,
-        cta_strategy: ctaStrategy,
-        hero_item: heroItem,
-      },
-
-      branding: {
-        accent_name: selectedAccent.name,
-        accent_color: selectedAccent.value,
-      },
-
-      generation: {
-        aspect_ratio: aspectRatio,
-      },
-
-      prompts: {
-        original_prompt: prompt,
-        enhanced_prompt: enhancedPrompt,
-        negative_prompt: negativePrompt,
-      },
-
-      orchestration: {
-        composition,
-      },
-
-      references: {
-        total_files: referenceImages.length,
-      },
-
-      metadata: {
-        source: "omakase-ai",
-        generated_at: new Date().toISOString(),
-      },
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
     };
+  }, []);
 
-    console.log(payload);
+  const wait = (ms: number) =>
+    new Promise((resolve) => {
+      window.setTimeout(resolve, ms);
+    });
 
-    alert("AI campaign payload generated.");
+  const pollGeneration = async (generationId: string) => {
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await wait(5000);
+
+      if (!isMountedRef.current) return;
+
+      const latest = await getGeneration(generationId);
+      onGenerationChange?.(latest);
+
+      if (!POLLABLE_STATUSES.has(latest.status)) {
+        return;
+      }
+    }
+  };
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    onGenerationStart?.();
+    try {
+      const payload = {
+        campaignType,
+        platform,
+        style,
+        prompt: enhancedPrompt,
+        cuisine,
+        audience,
+        goal,
+        mood,
+        heroItem,
+        visualStrategy,
+        ctaStrategy,
+        aspectRatio,
+        negativePrompt,
+      };
+
+      const generation = await createGenerationWithAssets({
+        ...payload,
+        images: referenceImages.length > 0 ? referenceImages : undefined
+      });
+
+      onGenerationChange?.(generation);
+      if (POLLABLE_STATUSES.has(generation.status)) {
+        await pollGeneration(generation.id);
+      }
+    } catch (err) {
+      console.error("Failed to generate campaign", err);
+      const message = err instanceof Error ? err.message : "Failed to generate campaign. Please try again.";
+      onGenerationError?.(message);
+      alert(message);
+    } finally {
+      if (isMountedRef.current) {
+        setIsGenerating(false);
+      }
+    }
   };
 
   return (
@@ -725,9 +757,9 @@ ${prompt}
               maxSizeBytes={12 * 1024 * 1024}
             />
 
-            <Button type="submit" size="lg" className="h-14 w-full rounded-2xl">
+            <Button type="submit" size="lg" className="h-14 w-full rounded-2xl" disabled={isGenerating}>
               <Wand2 className="size-4" />
-              Generate AI Campaign
+              {isGenerating ? "Generating..." : "Generate AI Campaign"}
             </Button>
           </div>
 

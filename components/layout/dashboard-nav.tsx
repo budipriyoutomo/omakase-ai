@@ -11,6 +11,8 @@ import {
   CreditCard,
   BarChart3,
   Settings,
+  Instagram,
+  CalendarClock,
   type LucideIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,6 +26,8 @@ export const dashboardNavItems: { href: string; label: string; icon: LucideIcon 
   { href: "/dashboard/history", label: "History", icon: History },
   { href: "/dashboard/subscription", label: "Subscription", icon: CreditCard },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/dashboard/social-accounts", label: "Social Media", icon: Instagram },
+  { href: "/dashboard/scheduled-posts", label: "Scheduled Posts", icon: CalendarClock },
   { href: "/dashboard/settings", label: "Settings", icon: Settings }
 ];
 

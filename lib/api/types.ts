@@ -17,6 +17,7 @@ export type CampaignTemplate = {
     name:     string;
     category: string;
     style:    string;
+    payload?: CreateGenerationPayload;
 };
 
 export type PaginatedMeta = {
@@ -73,10 +74,13 @@ export type CreateGenerationPayload = {
 
 export type TypographyBlueprint = {
     headline: {
-        text:      string;
-        placement: string;
-        alignment: string;
-        style:     string;
+        text:           string;
+        placement:      string;
+        alignment:      string;
+        style:          string;
+        font_size?:     string;
+        font_weight?:   string;
+        letter_spacing?: string;
         safe_area: {
             x:      number;
             y:      number;
@@ -84,17 +88,52 @@ export type TypographyBlueprint = {
             height: number;
         };
     };
-    subheadline: {
-        placement: string;
-        style:     string;
+    subheadline?: {
+        text?:      string;
+        placement:  string;
+        style:      string;
+        font_size?: string;
     };
     cta: {
-        text:      string;
-        placement: string;
-        style:     string;
+        text:            string;
+        placement:       string;
+        style:           string;
+        background_style?: string;
+        border_radius?:    string;
     };
+    decorations?: Array<{
+        type:       string;
+        text?:      string;
+        placement:  string;
+        style?:     string;
+        font_size?: string;
+    }>;
+    font_pairing?: {
+        headline?:  string;
+        body?:      string;
+        accent?:    string;
+        reasoning?: string;
+    };
+    text_effects?: Array<{
+        element: string;
+        effect:  string;
+        value?:  string;
+    }>;
+    text_backgrounds?: Array<{
+        element:       string;
+        type:          string;
+        color?:        string;
+        opacity?:      string;
+        padding?:      string;
+        border_radius?: string;
+    }>;
     layout_strategy:  string;
     visual_reasoning: string;
+    responsive_rules?: Array<{
+        breakpoint?:    string;
+        headline_size?: string;
+        cta_size?:      string;
+    }>;
 };
 
 export type ComponentBlueprint = {
@@ -130,9 +169,23 @@ export type CreativeBlueprint = {
     };
 };
 
+export type MarketingIntelligence = {
+    campaign_goal: string;
+    conversion_priority: string;
+    brand_positioning: string;
+    audience_energy: string;
+    cta_strength: string;
+    platform_behavior: string;
+    marketing_energy: string;
+    campaign_tone: string;
+    psychology_signals: string[];
+    metadata: Record<string, unknown>;
+};
+
 export type AiMetadata = {
     typography_blueprint?: TypographyBlueprint;
     creative_blueprint?:   CreativeBlueprint;
+    marketing_intelligence?: MarketingIntelligence;
     blueprint_error?: {
         message:   string;
         failed_at: string;
@@ -180,6 +233,9 @@ export type GenerationRecord = {
     creativeBlueprint:   CreativeBlueprint   | null;
     hasCreativeHtml:     boolean;
 
+    // Marketing Intelligence (diproses terpisah dari image generation)
+    marketingIntelligence: MarketingIntelligence | null;
+
     createdAt: string;
     updatedAt: string;
 };
@@ -225,3 +281,46 @@ export type UserSettingsPayload = Partial<{
     emailNotifications: boolean;
     marketingEmails:    boolean;
 }>;
+
+// ─── Social / Instagram ────────────────────────────────────────────────────
+
+export interface SocialAccount {
+  id: string;
+  platform: 'instagram';
+  platform_username: string;
+  is_active: boolean;
+  connected_at: string;
+  token_expires_at: string | null;
+}
+
+export interface ScheduledPost {
+  id: string;
+  campaign_generation_id: string | null;
+  image_url: string;
+  caption: string;
+  hashtags: string[];
+  scheduled_at: string;
+  status: 'pending' | 'processing' | 'published' | 'failed' | 'cancelled';
+  published_at: string | null;
+  instagram_media_id: string | null;
+  error_message: string | null;
+  retry_count: number;
+  social_account: SocialAccount;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CreateScheduledPostPayload = {
+  campaign_generation_id?: string | null;
+  social_account_id: string;
+  image_url: string;
+  caption: string;
+  hashtags?: string[];
+  scheduled_at: string;
+};
+
+export type PaginatedScheduledPosts = {
+  items: ScheduledPost[];
+  meta: PaginatedMeta;
+};
+

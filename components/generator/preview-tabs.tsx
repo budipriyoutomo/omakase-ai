@@ -1,15 +1,18 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, ExternalLink, Loader2, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { GenerationRecord } from "@/lib/api/types";
+import { getCreativeHtml } from "@/lib/services/campaigns.service";
 
-const tabIds = ["preview", "brief", "metadata"] as const;
+const tabIds = ["preview", "creative", "brief", "metadata"] as const;
 const tabLabels: Record<(typeof tabIds)[number], string> = {
   preview: "Preview",
+  creative: "Creative HTML",
   brief: "Brief",
   metadata: "Metadata"
 };
@@ -31,6 +34,10 @@ type PreviewTabsProps = {
 };
 
 export function PreviewTabs({ generation, isGenerating = false, error }: PreviewTabsProps) {
+  const [activeTab, setActiveTab] = useState("preview");
+  const [creativeHtml, setCreativeHtml] = useState<string | null>(null);
+  const [htmlLoading, setHtmlLoading] = useState(false);
+
   const displayUrls = [
     ...(generation?.imageUrl ? [generation.imageUrl] : []),
     ...(generation?.previewUrls ?? []),
@@ -41,6 +48,26 @@ export function PreviewTabs({ generation, isGenerating = false, error }: Preview
   const isProcessing =
     isGenerating || (generation ? processingStatuses.has(generation.status) : false);
   const status = generation?.status ?? (isGenerating ? "processing" : "idle");
+
+  // Fetch creative HTML when tab becomes active
+  useEffect(() => {
+    if (!generation?.hasCreativeHtml || activeTab !== "creative") return;
+    if (creativeHtml) return;
+
+    const fetchHtml = async () => {
+      setHtmlLoading(true);
+      try {
+        const html = await getCreativeHtml(generation.id);
+        setCreativeHtml(html);
+      } catch (err) {
+        console.error("Failed to fetch creative HTML", err);
+      } finally {
+        setHtmlLoading(false);
+      }
+    };
+
+    fetchHtml();
+  }, [activeTab, generation, creativeHtml]);
 
   return (
     <GlassCard className="sticky top-6 space-y-4">
@@ -74,13 +101,16 @@ export function PreviewTabs({ generation, isGenerating = false, error }: Preview
         </div>
       )}
 
-      <Tabs defaultValue="preview">
+      <Tabs defaultValue="preview" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="h-auto min-h-[44px] w-full justify-start rounded-2xl p-2">
-          {tabIds.map((id) => (
-            <TabsTrigger key={id} value={id} className="flex-1 sm:flex-none">
-              {tabLabels[id]}
-            </TabsTrigger>
-          ))}
+          {tabIds.map((id) => {
+            const isDisabled = id === "creative" && !generation?.hasCreativeHtml;
+            return (
+              <TabsTrigger key={id} value={id} className="flex-1 sm:flex-none" disabled={isDisabled}>
+                {tabLabels[id]}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
         {tabIds.map((id) => (
           <TabsContent key={id} value={id} className="mt-4 border-0 p-0">
@@ -125,6 +155,57 @@ export function PreviewTabs({ generation, isGenerating = false, error }: Preview
                             : "Submit form untuk membuat generation baru dari backend."}
                         </p>
                       </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {id === "creative" && (
+              <div className="space-y-4">
+                {htmlLoading ? (
+                  <div className="flex min-h-[24rem] items-center justify-center rounded-3xl border border-dashed border-border bg-muted/30 p-6 text-center">
+                    <div className="max-w-xs space-y-3">
+                      <Loader2 className="mx-auto size-8 animate-spin text-gold" />
+                      <p className="text-sm font-medium text-foreground">Loading creative HTML...</p>
+                    </div>
+                  </div>
+                ) : creativeHtml ? (
+                  <div className="overflow-hidden rounded-2xl border border-border bg-background">
+                    <iframe
+                      srcDoc={creativeHtml}
+                      className="h-[600px] w-full rounded-2xl border-0"
+                      title="Creative HTML Preview"
+                      sandbox="allow-same-origin"
+                    />
+                    <div className="flex items-center justify-between gap-3 border-t border-border p-3">
+                      <span className="text-xs text-muted-foreground">
+                        Interactive HTML preview
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button type="button" variant="ghost" size="sm" className="h-auto gap-1.5 p-0 text-gold hover:bg-transparent hover:text-gold/90" asChild>
+                          <a href={`/dashboard/generate/preview/${generation?.id}`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="size-3.5" />
+                            Full Preview
+                          </a>
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-auto gap-1.5 p-0 text-gold hover:bg-transparent hover:text-gold/90" asChild>
+                          <a href={`/dashboard/history/${generation?.id}`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="size-3.5" />
+                            Detail
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid min-h-[12rem] place-items-center rounded-3xl border border-dashed border-border bg-muted/30 p-6 text-center">
+                    <div className="max-w-xs space-y-3">
+                      <Sparkles className="mx-auto size-8 text-muted-foreground" />
+                      <p className="text-sm font-medium text-foreground">Creative HTML not available</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        Output creative HTML akan muncul setelah proses selesai.
+                      </p>
                     </div>
                   </div>
                 )}

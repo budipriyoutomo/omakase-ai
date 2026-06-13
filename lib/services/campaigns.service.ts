@@ -1,4 +1,5 @@
 import { api, apiRequest } from "@/lib/api/client";
+import { buildApiUrl } from "@/lib/api/config";
 import type {
     CreateGenerationPayload,
     GenerationRecord,
@@ -60,18 +61,33 @@ export async function getCreativeHtml(
     id: string,
     opts?: ServiceOptions
 ): Promise<string> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
-    const token   = opts?.token ?? "";
+    // Get token from localStorage directly for client-side calls
+    let token = opts?.token ?? "";
+    if (!token && typeof window !== "undefined") {
+        try {
+            const raw = window.localStorage.getItem("omakase-auth-storage");
+            if (raw) {
+                const parsed = JSON.parse(raw) as { state?: { accessToken?: string } };
+                token = parsed?.state?.accessToken ?? "";
+            }
+            // Fallback to legacy key
+            if (!token) {
+                token = window.localStorage.getItem("omakase_access_token") ?? "";
+            }
+        } catch { /* ignore */ }
+    }
 
-    const response = await fetch(
-        `${baseUrl}${API_V1}/generations/${encodeURIComponent(id)}/creative`,
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: "text/html",
-            },
-        }
-    );
+    const url = buildApiUrl(`${API_V1}/generations/${encodeURIComponent(id)}/creative`);
+
+    // This is a POST endpoint per backend routes
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "text/html",
+            "Content-Type": "application/json",
+        },
+    });
 
     if (!response.ok) {
         throw new Error(`Creative HTML not ready (${response.status})`);
@@ -135,4 +151,70 @@ export async function regenerate(
         {},
         { ...opts, auth: opts?.auth ?? true }
     );
+}
+
+export type TypographyOverrides = {
+    headline?: {
+        text?: string;
+        font_size?: string;
+        font_family?: string;
+        position?: { x: number; y: number };
+    };
+    subheadline?: {
+        text?: string;
+        font_size?: string;
+        position?: { x: number; y: number };
+    };
+    cta?: {
+        text?: string;
+        font_size?: string;
+        position?: { x: number; y: number };
+    };
+    font_pairing?: {
+        headline?: string;
+        body?: string;
+    };
+};
+
+export type RenderCreativeResponse = {
+    html: string;
+    creative_blueprint: Record<string, unknown>;
+};
+
+export async function renderCreative(
+    id: string,
+    typography: TypographyOverrides,
+    opts?: ServiceOptions
+): Promise<RenderCreativeResponse> {
+    let token = opts?.token ?? "";
+    if (!token && typeof window !== "undefined") {
+        try {
+            const raw = window.localStorage.getItem("omakase-auth-storage");
+            if (raw) {
+                const parsed = JSON.parse(raw) as { state?: { accessToken?: string } };
+                token = parsed?.state?.accessToken ?? "";
+            }
+            if (!token) {
+                token = window.localStorage.getItem("omakase_access_token") ?? "";
+            }
+        } catch { /* ignore */ }
+    }
+
+    const url = buildApiUrl(`${API_V1}/generations/${encodeURIComponent(id)}/creative/render`);
+
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+        },
+        body: JSON.stringify({ typography }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to render creative (${response.status})`);
+    }
+
+    return response.json() as Promise<RenderCreativeResponse>;
 }

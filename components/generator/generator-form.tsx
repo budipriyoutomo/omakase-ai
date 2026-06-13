@@ -9,6 +9,8 @@ import {
   Target,
   TrendingUp,
   Wand2,
+  Upload,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,7 +25,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { FileDropzone } from "@/components/ui/file-dropzone";
 import { GlassCard } from "../ui/glass-card";
 import { createGenerationWithAssets, getGeneration } from "@/lib/services/campaigns.service";
 import type { GenerationRecord } from "@/lib/api/types";
@@ -250,7 +251,9 @@ export function GeneratorForm({
   onGenerationError,
 }: GeneratorFormProps = {}) {
   const [referenceImages, setReferenceImages] = useState<File[]>([]);
+  const [brandRefEnabled, setBrandRefEnabled] = useState(false);
   const isMountedRef = useRef(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [campaignType, setCampaignType] = useState(campaignTypes[0]);
   const [cuisine, setCuisine] = useState(cuisineTypes[0]);
@@ -382,6 +385,20 @@ ${prompt}
     visualStrategy,
     ctaStrategy,
   ]);
+
+  /* =========================================================
+     BRAND REF UPLOAD HANDLERS
+  ========================================================= */
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    setReferenceImages(prev => [...prev, ...files]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeFile = (index: number) => {
+    setReferenceImages(prev => prev.filter((_, i) => i !== index));
+  };
 
   /* =========================================================
      GENERATE
@@ -518,7 +535,7 @@ ${prompt}
           </div>
         </div>
 
-        <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1.02fr)_minmax(22rem,0.98fr)] lg:p-6">
+        <div className="p-5 lg:p-6">
           <div className="space-y-5">
             <PanelHeader
               icon={<Megaphone className="size-5" />}
@@ -748,98 +765,74 @@ ${prompt}
               />
             </Field>
 
-            <FileDropzone
-              label="Brand References"
-              hint="Upload logo, menu, restaurant interior, or food photos."
-              files={referenceImages}
-              onFilesChange={setReferenceImages}
-              maxFiles={8}
-              maxSizeBytes={12 * 1024 * 1024}
-            />
+            {/* Brand Reference Upload — toggleable with checkbox */}
+            <div className="space-y-3 rounded-2xl border border-border p-5">
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={brandRefEnabled}
+                  onChange={(e) => {
+                    setBrandRefEnabled(e.target.checked);
+                    if (!e.target.checked) setReferenceImages([]);
+                  }}
+                  className="size-4 rounded border-gold/30 accent-gold cursor-pointer"
+                />
+                <div>
+                  <span className="text-sm font-medium text-foreground">Brand Reference Upload</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Upload logo, menu, interior, atau foto makanan restoran sebagai referensi AI.
+                  </p>
+                </div>
+              </label>
+
+              {brandRefEnabled && (
+                <div className="pt-3 border-t border-border/50">
+                  <div
+                    className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border p-6 text-muted-foreground transition hover:border-gold/40 hover:text-gold"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="size-5" />
+                    <span className="text-sm font-medium">Click to upload files</span>
+                    <span className="text-xs">(max 8 files, 12 MB each)</span>
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+
+                  {referenceImages.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {referenceImages.map((file, i) => (
+                        <div
+                          key={`${file.name}-${i}`}
+                          className="relative group flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground"
+                        >
+                          <span className="max-w-[160px] truncate">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeFile(i)}
+                            className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <Button type="submit" size="lg" className="h-14 w-full rounded-2xl" disabled={isGenerating}>
               <Wand2 className="size-4" />
               {isGenerating ? "Generating..." : "Generate AI Campaign"}
             </Button>
           </div>
-
-          <aside className="space-y-5">
-            <section className="overflow-hidden rounded-3xl border border-border bg-background/80">
-              <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Live direction preview</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Ringkasan brief yang akan dibawa ke generator.
-                  </p>
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600">
-                  <span className="size-2 rounded-full bg-emerald-500" />
-                  Active
-                </div>
-              </div>
-
-              <div className="space-y-5 p-5">
-                <div className="rounded-3xl border border-border bg-card p-5">
-                  <div className="flex flex-wrap gap-2">
-                    {[campaignType, cuisine, platform].map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                  <h3 className="mt-5 text-2xl font-semibold tracking-tight text-foreground">
-                    {heroItem || cuisine}
-                  </h3>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    {style} campaign for {audience.toLowerCase()} with {mood.toLowerCase()} visual tone and {visualStrategy.toLowerCase()} framing.
-                  </p>
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    {[goal, ctaStrategy, aspectRatio].map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-foreground"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <Sparkles className="size-4 text-gold" />
-                    AI orchestrated prompt
-                  </div>
-                  <div className="max-h-[24rem] overflow-auto rounded-2xl border border-border bg-muted/30 p-4">
-                    <p className="whitespace-pre-line text-sm leading-6 text-muted-foreground">
-                      {enhancedPrompt}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-3xl border border-border bg-background/80 p-5">
-              <PanelHeader
-                icon={<TrendingUp className="size-5" />}
-                title="AI recommendations"
-                description="Saran kecil untuk menjaga prompt tetap tajam."
-              />
-              <div className="mt-4 space-y-3">
-                {recommendations.map((item) => (
-                  <div
-                    key={item}
-                    className="rounded-2xl border border-border bg-card px-4 py-3 text-sm leading-6 text-muted-foreground"
-                  >
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </section>
-          </aside>
         </div>
         </GlassCard>
       </section>

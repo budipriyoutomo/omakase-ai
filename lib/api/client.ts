@@ -1,6 +1,7 @@
 import { buildApiUrl } from "@/lib/api/config";
 import { ApiError } from "@/lib/api/errors";
 import { accessTokenStorage } from "@/lib/api/token-storage";
+import { tryRefreshToken } from "@/lib/api/token-refresh";
 
 export type ApiRequestOptions = Omit<RequestInit, "body"> & {
   /** Use for FormData / streams. Ignored when `json` is set. */
@@ -34,6 +35,8 @@ async function parseBody(response: Response): Promise<unknown> {
 
 /**
  * Typed fetch to your backend. Throws `ApiError` on non-OK responses.
+ *
+ * Automatically attempts token refresh on 401 (Unauthorized).
  */
 export async function apiRequest<T = unknown>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const { json, auth, token, body: rawBody, headers: initHeaders, ...rest } = options;
@@ -61,6 +64,50 @@ export async function apiRequest<T = unknown>(path: string, options: ApiRequestO
     body,
     cache: rest.cache ?? "no-store"
   });
+
+  // ── 401 interceptor: auto-refresh token and retry once ──────────────
+  if (response.status === 401 && auth && !token && typeof window !== "undefined") {
+    const newToken = await tryRefreshToken();
+    if (newToken) {
+      // Retry the original request with the fresh token
+      const retryHeaders = new Headers(initHeaders);
+      retryHeaders.set("Authorization", `Bearer ${newToken}`);
+      if (json !== undefined && !retryHeaders.has("Content-Type")) {
+        retryHeaders.set("Content-Type", "application/json");
+      }
+
+      const retryResponse = await fetch(url, {
+        ...rest,
+        headers: retryHeaders,
+        body,
+        cache: "no-store",
+      });
+
+      const retryParsed = await parseBody(retryResponse);
+
+      if (!retryResponse.ok) {
+        const message =
+          typeof retryParsed === "object" && retryParsed !== null && "message" in retryParsed && typeof (retryParsed as { message: unknown }).message === "string"
+            ? (retryParsed as { message: string }).message
+            : retryResponse.statusText || "Request failed";
+        throw new ApiError(message, retryResponse.status, retryParsed);
+      }
+
+      if (retryParsed && typeof retryParsed === "object" && "data" in retryParsed) {
+        return (retryParsed as { data: T }).data;
+      }
+
+      return retryParsed as T;
+    }
+
+    // Refresh failed — throw the original error
+    const parsed = await parseBody(response);
+    const message =
+      typeof parsed === "object" && parsed !== null && "message" in parsed && typeof (parsed as { message: unknown }).message === "string"
+        ? (parsed as { message: string }).message
+        : response.statusText || "Unauthorized";
+    throw new ApiError(message, 401, parsed);
+  }
 
   const parsed = await parseBody(response);
 

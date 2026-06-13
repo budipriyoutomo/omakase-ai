@@ -272,6 +272,7 @@ export function GeneratorForm({
   const [heroItem, setHeroItem] = useState("");
   const [prompt, setPrompt] = useState("");
   const [negativePrompt, setNegativePrompt] = useState("");
+  const [promptManuallyEdited, setPromptManuallyEdited] = useState(false);
 
   const [selectedAccent, setSelectedAccent] = useState(
     brandAccents[0]
@@ -347,6 +348,45 @@ ${prompt}
     composition,
     aspectRatio,
     prompt,
+  ]);
+
+  /* =========================================================
+     AUTO-GENERATE PROMPT DRAFT
+  ========================================================= */
+
+  useEffect(() => {
+    if (promptManuallyEdited) return;
+
+    const draft = generateDraftPrompt({
+      campaignType,
+      goal,
+      audience,
+      platform,
+      cuisine,
+      style,
+      mood,
+      aspectRatio,
+      heroItem,
+      ctaStrategy,
+      brandAccent: selectedAccent.name,
+    });
+
+    if (draft) {
+      setPrompt(draft);
+    }
+  }, [
+    campaignType,
+    goal,
+    audience,
+    platform,
+    cuisine,
+    style,
+    mood,
+    aspectRatio,
+    heroItem,
+    ctaStrategy,
+    selectedAccent,
+    promptManuallyEdited,
   ]);
 
   /* =========================================================
@@ -487,14 +527,14 @@ ${prompt}
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-medium text-gold">
               <Sparkles className="size-3.5" />
-              Prompt orchestration studio
+              Studio konten marketing
             </div>
             <div className="space-y-2">
               <h2 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                Restaurant Marketing AI Studio
+                Buat Konten Instagram-mu
               </h2>
               <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-                AI-powered campaign orchestration engine designed for restaurant and cafe marketing.
+                Buat konten marketing yang menarik dalam hitungan menit — tanpa perlu jago desain.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -513,7 +553,7 @@ ${prompt}
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-medium uppercase text-muted-foreground">
-                  Prompt readiness
+                  Kelengkapan konten
                 </p>
                 <p className="mt-2 text-4xl font-semibold tracking-tight text-foreground">
                   {campaignScore}%
@@ -530,7 +570,7 @@ ${prompt}
               />
             </div>
             <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              Lengkapi hero item, prompt detail, negative prompt, dan referensi untuk arahan visual yang lebih presisi.
+              Hasil lebih baik jika kamu mengisi hero item, detail konten, dan referensi brand.
             </p>
           </div>
         </div>
@@ -703,8 +743,8 @@ ${prompt}
 
             <PanelHeader
               icon={<Brain className="size-5" />}
-              title="Prompt craft"
-              description="Isi objek utama, arahan konten, dan file referensi."
+              title="Detail konten"
+              description="Beritahu AI tentang menu dan pesan yang ingin kamu sampaikan."
             />
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -716,7 +756,7 @@ ${prompt}
                 />
               </Field>
 
-              <Field label="Visual Strategy">
+              <Field label="Pendekatan visual">
                 <Select value={visualStrategy} onValueChange={setVisualStrategy}>
                   <SelectTrigger>
                     <SelectValue />
@@ -731,7 +771,7 @@ ${prompt}
                 </Select>
               </Field>
 
-              <Field label="CTA Strategy">
+              <Field label="Ajakan bertindak (CTA)">
                 <Select value={ctaStrategy} onValueChange={setCtaStrategy}>
                   <SelectTrigger>
                     <SelectValue />
@@ -751,17 +791,31 @@ ${prompt}
               <Textarea
                 rows={5}
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Create a luxury sushi payday campaign for Gen Z audiences with a strong product close-up and dramatic lighting."
+                onChange={(e) => {
+                  setPrompt(e.target.value);
+                  setPromptManuallyEdited(true);
+                }}
+                placeholder="Draft prompt akan muncul otomatis setelah kamu mengisi form di atas. Kamu bisa edit sesuai kebutuhan."
               />
+              {promptManuallyEdited && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPromptManuallyEdited(false);
+                  }}
+                  className="text-xs text-gold/70 hover:text-gold underline underline-offset-2 transition-colors"
+                >
+                  ↺ Reset ke draft otomatis
+                </button>
+              )}
             </Field>
 
-            <Field label="Negative Prompt">
+            <Field label="Hindari elemen ini (opsional)">
               <Textarea
                 rows={3}
                 value={negativePrompt}
                 onChange={(e) => setNegativePrompt(e.target.value)}
-                placeholder="blurry, low quality, warped hands, unreadable logo, cluttered layout"
+                placeholder="contoh: foto blur, layout berantakan, warna terlalu gelap"
               />
             </Field>
 
@@ -778,9 +832,9 @@ ${prompt}
                   className="size-4 rounded border-gold/30 accent-gold cursor-pointer"
                 />
                 <div>
-                  <span className="text-sm font-medium text-foreground">Brand Reference Upload</span>
+                  <span className="text-sm font-medium text-foreground">Upload referensi brand (opsional)</span>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Upload logo, menu, interior, atau foto makanan restoran sebagai referensi AI.
+                    Upload logo, foto menu, atau interior cafe kamu sebagai referensi visual AI.
                   </p>
                 </div>
               </label>
@@ -828,10 +882,44 @@ ${prompt}
               )}
             </div>
 
-            <Button type="submit" size="lg" className="h-14 w-full rounded-2xl" disabled={isGenerating}>
-              <Wand2 className="size-4" />
-              {isGenerating ? "Generating..." : "Generate AI Campaign"}
-            </Button>
+            {(() => {
+              const { credits, tier } = getCreditCost(style);
+              const userCredits = 10; // default credit balance — sync with your auth/subscription store
+              const hasEnoughCredits = userCredits >= credits;
+              return (
+                <div className="space-y-2">
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="h-14 w-full rounded-2xl"
+                    disabled={isGenerating || !hasEnoughCredits}
+                  >
+                    <Wand2 className="size-4" />
+                    {isGenerating ? "Generating..." : "Generate Konten"}
+                    <span className="ml-2 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-xs font-semibold">
+                      {credits} Credit
+                    </span>
+                  </Button>
+
+                  {!hasEnoughCredits && (
+                    <p className="text-center text-xs text-destructive">
+                      Credit tidak cukup.{' '}
+                      <a href="/dashboard/subscription" className="underline underline-offset-2 hover:text-destructive/80">
+                        Top up sekarang
+                      </a>
+                    </p>
+                  )}
+
+                  {hasEnoughCredits && (
+                    <p className="text-center text-xs text-muted-foreground">
+                      Sisa setelah generate:{' '}
+                      <span className="font-medium text-gold">{userCredits - credits} Credits</span>
+                      {' '}· Kualitas: {tier}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
         </GlassCard>
@@ -883,4 +971,81 @@ function PanelHeader({
 
 function Divider() {
   return <div className="h-px bg-border" />;
+}
+
+/* =========================================================
+   PROMPT GENERATOR
+========================================================= */
+
+function generateDraftPrompt(fields: {
+  campaignType?: string;
+  goal?: string;
+  audience?: string;
+  platform?: string;
+  cuisine?: string;
+  style?: string;
+  mood?: string;
+  aspectRatio?: string;
+  heroItem?: string;
+  ctaStrategy?: string;
+  brandAccent?: string;
+}): string {
+  const parts: string[] = [];
+
+  if (fields.heroItem) {
+    parts.push(`Tampilkan ${fields.heroItem} sebagai objek utama`);
+  }
+
+  if (fields.campaignType) {
+    parts.push(`untuk kampanye ${fields.campaignType}`);
+  }
+
+  if (fields.style) {
+    parts.push(`dengan gaya visual ${fields.style}`);
+  }
+
+  if (fields.mood) {
+    parts.push(`dan suasana ${fields.mood}`);
+  }
+
+  if (fields.brandAccent) {
+    parts.push(`menggunakan aksen warna ${fields.brandAccent}`);
+  }
+
+  if (fields.aspectRatio) {
+    parts.push(`format ${fields.aspectRatio}`);
+  }
+
+  if (fields.audience) {
+    parts.push(`ditujukan untuk ${fields.audience}`);
+  }
+
+  if (fields.ctaStrategy) {
+    parts.push(`dengan CTA: ${fields.ctaStrategy}`);
+  }
+
+  if (fields.platform) {
+    parts.push(`dioptimalkan untuk ${fields.platform}`);
+  }
+
+  return parts.length > 0 ? parts.join(', ') + '.' : '';
+}
+
+/* =========================================================
+   CREDIT COST HELPER
+========================================================= */
+
+function getCreditCost(visualStyle?: string): { credits: number; tier: string } {
+  const ultraStyles = ['Luxury Fine Dining', 'Dark Japanese Luxury'];
+  const hdStyles = ['Tokyo Neon', 'Modern Nusantara', 'Industrial Cafe'];
+
+  if (visualStyle && ultraStyles.some(s => visualStyle === s)) {
+    return { credits: 3, tier: 'Ultra' };
+  }
+
+  if (visualStyle && hdStyles.some(s => visualStyle === s)) {
+    return { credits: 2, tier: 'HD' };
+  }
+
+  return { credits: 1, tier: 'Standard' };
 }
